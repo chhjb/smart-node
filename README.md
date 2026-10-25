@@ -13,7 +13,7 @@
 ### 交互菜单
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/<你的用户名>/smart-node/main/smart-node.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/chhjb/smart-node/main/smart-node.sh)
 ```
 
 ```bash
@@ -23,7 +23,7 @@ chmod +x smart-node.sh && ./smart-node.sh
 ### 非交互
 
 ```bash
-SN_PROTOCOLS=vless SN_AUTO=1 bash <(curl -fsSL https://raw.githubusercontent.com/<你的用户名>/smart-node/main/smart-node.sh)
+SN_PROTOCOLS=vless SN_AUTO=1 bash <(curl -fsSL https://raw.githubusercontent.com/chhjb/smart-node/main/smart-node.sh)
 ```
 
 ```bash
