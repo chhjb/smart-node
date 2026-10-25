@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="dark" />
+<title>智能节点 · 命令生成面板</title>
+<style>
+:root{
+  --bg:#0b1220;--card:#121a2b;--text:#e8eefc;--muted:#8b9bb8;
+  --line:#243044;--accent:#3b82f6;--ok:#34d399;--warn:#fbbf24;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  margin:0 auto;padding:14px 12px 100px;max-width:720px;
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  background:var(--bg);color:var(--text);line-height:1.5;font-size:15px;
+}
+h1{font-size:1.2rem;margin:0 0 4px}
+.sub{color:var(--muted);font-size:.82rem;margin:0 0 12px}
+.badge{font-size:.65rem;padding:2px 8px;border-radius:999px;background:#1e3a5f;color:#93c5fd;margin-left:6px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+.card h2{font-size:.95rem;margin:0 0 8px}
+.hint{font-size:.75rem;color:var(--muted);margin:6px 0}
+.hint.warn{color:var(--warn)}.hint.ok{color:var(--ok)}
+.fl{display:block;font-size:.8rem;color:var(--muted);margin:10px 0 4px}
+input[type=text],input[type=number],textarea,select{
+  width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);
+  background:#0d1524;color:var(--text);font-size:16px;
+}
+textarea{min-height:72px;font-family:ui-monospace,monospace;font-size:13px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media(max-width:400px){.grid2{grid-template-columns:1fr}}
+.chk{
+  display:flex;align-items:center;gap:10px;margin:6px 0;padding:10px 12px;
+  border-radius:10px;background:#0d1524;border:1px solid transparent;cursor:pointer;
+  user-select:none;-webkit-user-select:none;
+}
+.chk:has(input:checked){border-color:var(--accent);background:#0f1a30}
+.chk input{width:18px;height:18px;flex-shrink:0;accent-color:var(--accent)}
+.chk .meta{flex:1;min-width:0}
+.chk .name{font-size:.9rem}
+.chk .tag{font-size:.65rem;padding:1px 6px;border-radius:4px;margin-left:4px;background:#1e3a5f;color:#93c5fd}
+.chk .tag.d{background:#14532d;color:#86efac}
+.chk .tag.light{background:#3b2f1a;color:#fbbf24}
+.ports{display:none;margin:4px 0 8px 28px}
+.ports.show{display:block}
+.ports input{margin-top:4px}
+.seg{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.seg label{
+  flex:1;min-width:90px;text-align:center;padding:10px 6px;border:1px solid var(--line);
+  border-radius:10px;background:#0d1524;cursor:pointer;font-size:.8rem;
+}
+.seg label:has(input:checked){border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+button{
+  border:0;border-radius:10px;padding:11px 14px;font-size:.88rem;min-height:44px;cursor:pointer;
+}
+button.primary{background:var(--accent);color:#fff}
+button.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+.hidden{display:none!important}
+.out{
+  white-space:pre-wrap;word-break:break-all;background:#0a101c;border:1px solid var(--line);
+  border-radius:10px;padding:10px;font-size:12px;font-family:ui-monospace,monospace;
+  max-height:240px;overflow:auto;margin-top:8px;
+}
+.box{padding:8px 10px;border-radius:8px;background:#0d1524;border:1px solid var(--line);font-size:.8rem;margin-top:8px}
+.box b{color:#93c5fd}
+.sticky{
+  position:fixed;left:0;right:0;bottom:0;z-index:40;background:#0a101c;border-top:1px solid var(--line);
+  padding:8px 12px 12px;padding-bottom:max(12px,env(safe-area-inset-bottom));
+}
+.sticky .inner{max-width:720px;margin:0 auto}
+.sticky .line{font-family:ui-monospace,monospace;font-size:11px;color:#93c5fd;word-break:break-all;
+  max-height:40px;overflow:hidden;margin-bottom:6px}
+.toast{
+  position:fixed;left:50%;top:12px;transform:translateX(-50%);background:#1f2937;color:#fff;
+  padding:8px 14px;border-radius:999px;opacity:0;transition:opacity .2s;z-index:99;font-size:.85rem;
+  pointer-events:none;max-width:90%;
+}
+.toast.show{opacity:1}.toast.err{background:#7f1d1d}
+footer{margin:16px 0 8px;font-size:.72rem;color:var(--muted);text-align:center}
+</style>
+</head>
+<body>
+<h1>智能节点<span class="badge">v5.12.4</span></h1>
+<p class="sub">自由勾选协议 · 生成 SSH 命令 · 数据只在本机浏览器</p>
+
+<!-- 智能推荐（可折叠逻辑：始终可见但简短） -->
+<div class="card">
+  <h2>智能推荐</h2>
+  <div class="seg" id="memSeg">
+    <label><input type="radio" name="mem" value="64" checked />64MB</label>
+    <label><input type="radio" name="mem" value="128" />128MB</label>
+    <label><input type="radio" name="mem" value="256" />256MB</label>
+    <label><input type="radio" name="mem" value="512" />512MB+</label>
+  </div>
+  <div class="seg" id="netSeg">
+    <label><input type="radio" name="net" value="nat" checked />NAT 隧道</label>
+    <label><input type="radio" name="net" value="public" />有公网</label>
+    <label><input type="radio" name="net" value="both" />都要</label>
+  </div>
+  <div class="box" id="recText">—</div>
+  <div class="btns">
+    <button type="button" class="primary" id="btnRec">应用推荐</button>
+    <button type="button" class="ghost" id="btnVless">仅 VLESS</button>
+    <button type="button" class="ghost" id="btnSafer">更稳搭配</button>
+  </div>
+</div>
+
+<!-- 协议自由组合 -->
+<div class="card">
+  <h2>协议（可多选）</h2>
+  <p class="hint">隧道走 Cloudflare，不占面板映射；直连需映射端口。</p>
+
+  <p class="fl">隧道（Argo）</p>
+  <label class="chk"><input type="checkbox" id="pVless" checked /><span class="meta"><span class="name">VLESS-WS</span><span class="tag light">推荐</span></span></label>
+  <label class="chk"><input type="checkbox" id="pVmess" /><span class="meta"><span class="name">VMess-WS</span><span class="tag">隧道</span></span></label>
+  <label class="chk"><input type="checkbox" id="pTrojan" /><span class="meta"><span class="name">Trojan-WS</span><span class="tag">隧道</span></span></label>
+  <label class="chk"><input type="checkbox" id="pSs" /><span class="meta"><span class="name">Shadowsocks-WS</span><span class="tag">隧道</span></span></label>
+
+  <div id="argoBox">
+    <p class="fl">隧道类型</p>
+    <div class="seg" id="argoSeg">
+      <label><input type="radio" name="argo" value="quick" checked />临时 Quick</label>
+      <label><input type="radio" name="argo" value="named" />固定 Token</label>
+    </div>
+    <div id="namedBox" class="hidden">
+      <span class="fl">CF Token</span>
+      <textarea id="cfToken" placeholder="Zero Trust → 隧道 → Token"></textarea>
+      <span class="fl">固定域名</span>
+      <input id="fixedHost" type="text" placeholder="r2.example.com" autocomplete="off" />
+      <p class="hint warn">CF 公共主机名路径必须留空</p>
+    </div>
+  </div>
+
+  <p class="fl">直连（需映射端口）</p>
+  <label class="chk"><input type="checkbox" id="pReality" /><span class="meta"><span class="name">VLESS-REALITY</span><span class="tag d">直连</span></span></label>
+  <div class="ports" id="portBoxReality"><input type="number" id="portReality" inputmode="numeric" placeholder="TCP 端口（可空）" /></div>
+
+  <label class="chk"><input type="checkbox" id="pHy2" /><span class="meta"><span class="name">Hysteria2</span><span class="tag d">UDP</span></span></label>
+  <div class="ports" id="portBoxHy2"><input type="number" id="portHy2" inputmode="numeric" placeholder="UDP 端口（可空=自动）" /></div>
+
+  <label class="chk"><input type="checkbox" id="pTuic" /><span class="meta"><span class="name">TUIC</span><span class="tag d">UDP</span></span></label>
+  <div class="ports" id="portBoxTuic"><input type="number" id="portTuic" inputmode="numeric" placeholder="UDP 端口" /></div>
+
+  <label class="chk"><input type="checkbox" id="pSocks" /><span class="meta"><span class="name">SOCKS5</span><span class="tag d">直连</span></span></label>
+  <div class="ports" id="portBoxSocks"><input type="number" id="portSocks" inputmode="numeric" placeholder="TCP 端口" /></div>
+
+  <label class="chk"><input type="checkbox" id="pSstcp" /><span class="meta"><span class="name">SS 直连</span><span class="tag d">SS-TCP</span></span></label>
+  <div class="ports" id="portBoxSstcp"><input type="number" id="portSstcp" inputmode="numeric" placeholder="端口" /></div>
+
+  <label class="chk"><input type="checkbox" id="pAnytls" /><span class="meta"><span class="name">AnyTLS</span><span class="tag d">重核心</span></span></label>
+  <div class="ports" id="portBoxAnytls"><input type="number" id="portAnytls" inputmode="numeric" placeholder="TCP 端口" /></div>
+
+  <div class="box" id="riskBox">搭配评估：—</div>
+  <p class="hint">REALITY 完整安装仍可用小鸡菜单；面板以隧道协议为主。</p>
+</div>
+
+<!-- 全局 -->
+<div class="card">
+  <h2>全局（可空）</h2>
+  <span class="fl">UUID</span>
+  <div style="display:flex;gap:8px">
+    <input id="uuid" type="text" placeholder="空=自动生成" style="flex:1" autocomplete="off" />
+    <button type="button" class="ghost" id="btnUuid" style="min-width:72px">生成</button>
+  </div>
+  <span class="fl">节点名前缀 / 连接域名 / 优选 IP</span>
+  <div class="grid2">
+    <input id="nodeName" type="text" placeholder="名称 如 HK" autocomplete="off" />
+    <input id="serverAddr" type="text" placeholder="无公网IP填域名" autocomplete="off" />
+  </div>
+  <input id="cdnIp" type="text" placeholder="优选 IP 可空" autocomplete="off" style="margin-top:8px" />
+  <span class="fl">WS Path / REALITY dest</span>
+  <div class="grid2">
+    <input id="wsPath" type="text" placeholder="Path 可空" autocomplete="off" />
+    <input id="dest" type="text" placeholder="dest 可空" autocomplete="off" />
+  </div>
+  <span class="fl">脚本来源</span>
+  <select id="scriptSrc">
+    <option value="ghfast" selected>在线 · ghfast 镜像</option>
+    <option value="github">在线 · GitHub raw</option>
+    <option value="jsdelivr">在线 · jsDelivr</option>
+    <option value="custom">在线 · 自定义 URL</option>
+    <option value="local">本地 /root/smart-node.sh</option>
+  </select>
+  <div id="customBox" class="hidden">
+    <input id="customUrl" type="text" placeholder="https://.../smart-node.sh" autocomplete="off" style="margin-top:6px" />
+  </div>
+  <label class="chk" style="margin-top:8px"><input type="checkbox" id="pReuse" /><span class="meta"><span class="name">重装沿用 UUID（SN_REUSE）</span></span></label>
+  <p class="hint ok">请把本仓库 smart-node.sh 推到 GitHub 后，把 raw 地址填进「自定义」或改镜像源。</p>
+</div>
+
+<!-- 动作 -->
+<div class="card">
+  <h2>动作</h2>
+  <div class="seg" id="actSeg">
+    <label><input type="radio" name="act" value="install" checked />安装</label>
+    <label><input type="radio" name="act" value="link" />链接</label>
+    <label><input type="radio" name="act" value="sub" />订阅</label>
+    <label><input type="radio" name="act" value="status" />状态</label>
+    <label><input type="radio" name="act" value="check" />体检</label>
+    <label><input type="radio" name="act" value="purge" />清理</label>
+  </div>
+  <div class="seg" id="fmtSeg">
+    <label><input type="radio" name="fmt" value="one" checked />单行命令</label>
+    <label><input type="radio" name="fmt" value="multi" />多行</label>
+  </div>
+  <div class="btns">
+    <button type="button" class="primary" id="btnGen">生成命令</button>
+    <button type="button" class="ghost" id="btnCopy">复制</button>
+    <button type="button" class="ghost" id="btnReset">重置</button>
+  </div>
+  <div class="box" id="liveSummary">组合：—</div>
+  <div class="out" id="outCmd">点击「生成命令」</div>
+</div>
+
+<footer>面板 v5.12.4 · 与脚本 5.12.4+ 对齐 · 无后端</footer>
+
+<div class="sticky">
+  <div class="inner">
+    <div class="line" id="stickyLine">生成后显示预览</div>
+    <button type="button" class="primary" id="btnSticky" style="width:100%">复制命令</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+function $(id){ return document.getElementById(id); }
+var URLS={
+  github:"https://raw.githubusercontent.com/chhjb/smart-node/main/smart-node.sh",
+  ghfast:"https://ghfast.top/https://raw.githubusercontent.com/chhjb/smart-node/main/smart-node.sh",
+  jsdelivr:"https://cdn.jsdelivr.net/gh/chhjb/smart-node@main/smart-node.sh"
+};
+var last="";
+
+function toast(m,err){
+  var el=$("toast"); if(!el) return;
+  el.textContent=m; el.className="toast show"+(err?" err":"");
+  clearTimeout(toast._t); toast._t=setTimeout(function(){ el.className="toast"; },2000);
+}
+function copyText(t){
+  if(!t){ toast("请先生成",1); return; }
+  function ok(){ toast("已复制"); }
+  function fail(){ toast("复制失败，请长按命令",1); }
+  if(navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(t).then(ok).catch(function(){ legacy(t,ok,fail); });
+  } else legacy(t,ok,fail);
+}
+function legacy(t,ok,fail){
+  try{
+    var a=document.createElement("textarea");
+    a.value=t; a.setAttribute("readonly","");
+    a.style.cssText="position:fixed;left:0;top:0;width:1px;height:1px;opacity:0";
+    document.body.appendChild(a); a.focus(); a.select();
+    var r=document.execCommand("copy"); document.body.removeChild(a);
+    r?ok():fail();
+  }catch(e){ fail(); }
+}
+function cleanHost(s){
+  s=(s||"").trim().replace(/^https?:\/\//i,"").replace(/\/.*$/,"");
+  if(/^[^:]+:\d+$/.test(s) && !/^\d+\.\d+\.\d+\.\d+:\d+$/.test(s)) s=s.replace(/:\d+$/,"");
+  return s;
+}
+function val(name){ var r=document.querySelector('input[name="'+name+'"]:checked'); return r?r.value:""; }
+function memTier(){ return parseInt(val("mem")||"64",10); }
+function netMode(){ return val("net")||"nat"; }
+function argo(){ return val("argo")||"quick"; }
+function act(){ return val("act")||"install"; }
+function fmt(){ return val("fmt")||"one"; }
+
+function tunnels(){
+  var x=[];
+  if($("pVless").checked) x.push("vless");
+  if($("pVmess").checked) x.push("vmess");
+  if($("pTrojan").checked) x.push("trojan");
+  if($("pSs").checked) x.push("ss");
+  return x;
+}
+function directs(){
+  var x=[];
+  if($("pReality").checked) x.push("reality");
+  if($("pHy2").checked) x.push("hy2");
+  if($("pTuic").checked) x.push("tuic");
+  if($("pSocks").checked) x.push("socks");
+  if($("pSstcp").checked) x.push("ss-tcp");
+  if($("pAnytls").checked) x.push("anytls");
+  return x;
+}
+
+function clearProtos(){
+  ["pVless","pVmess","pTrojan","pSs","pReality","pHy2","pTuic","pSocks","pSstcp","pAnytls"].forEach(function(id){
+    var el=$(id); if(el) el.checked=false;
+  });
+}
+
+function computeRecommend(){
+  var m=memTier(), net=netMode();
+  var tunnel=["vless"], direct=[], note="";
+  if(m<=64){
+    note="64MB：仅 VLESS 隧道，控内存。";
+  }else if(m<=128){
+    note="128MB：VLESS 隧道为主。";
+  }else if(m<=256){
+    tunnel=["vless","vmess"];
+    note="256MB：可多隧道协议。";
+    if(net!=="nat"){ direct=["hy2"]; note+=" 有公网可加 Hy2。"; }
+  }else{
+    tunnel=["vless","vmess"];
+    note="512MB+：可较完整组合。";
+    if(net!=="nat"){ direct=["hy2","reality"]; note+=" 建议隧道+直连双通道。"; }
+  }
+  if(net==="nat"){ direct=[]; note+=" NAT 优先隧道。"; }
+  return {tunnel:tunnel,direct:direct,note:note,mem:m,net:net};
+}
+
+function applyRecommend(){
+  var r=computeRecommend();
+  clearProtos();
+  r.tunnel.forEach(function(p){
+    if(p==="vless") $("pVless").checked=true;
+    if(p==="vmess") $("pVmess").checked=true;
+  });
+  r.direct.forEach(function(p){
+    if(p==="hy2") $("pHy2").checked=true;
+    if(p==="reality") $("pReality").checked=true;
+  });
+  if(!r.tunnel.length && !r.direct.length) $("pVless").checked=true;
+  sync();
+  toast("已应用推荐");
+}
+
+function applySafer(){
+  clearProtos();
+  $("pVless").checked=true;
+  var m=memTier(), net=netMode();
+  if(net!=="nat" && m>=256){ $("pHy2").checked=true; $("pReality").checked=true; }
+  $("pSs").checked=false;
+  sync();
+  toast("已设为更稳搭配");
+}
+
+function assessRisk(){
+  var t=tunnels(), d=directs(), score=50, level="中等", tips=[], good=[];
+  if(t.indexOf("vless")>=0){ score+=15; good.push("含 VLESS"); }
+  if(t.indexOf("ss")>=0 && t.indexOf("vless")<0){ score-=15; tips.push("SS 建议搭配 VLESS"); }
+  if(t.length===1 && t[0]==="vmess"){ score-=12; tips.push("单 VMess 偏弱"); }
+  if(t.length===1 && t[0]==="trojan"){ score-=12; tips.push("单 Trojan 建议加 VLESS"); }
+  if(t.length && argo()==="named"){ score+=10; good.push("固定隧道"); }
+  if(t.length && argo()==="quick"){ score-=6; tips.push("临时域名会变"); }
+  if(d.indexOf("reality")>=0||d.indexOf("hy2")>=0){ score+=8; good.push("有直连备用"); }
+  if(d.indexOf("socks")>=0 && !t.length){ score-=18; tips.push("裸 SOCKS 风险高"); }
+  if(d.indexOf("ss-tcp")>=0 && !t.length){ score-=15; tips.push("单独 SS 直连特征明显"); }
+  if(t.length+d.length<=1){ score-=5; tips.push("建议至少一种备用"); }
+  if(score>=75) level="较稳";
+  else if(score>=55) level="中等";
+  else if(score>=40) level="偏弱";
+  else level="高风险";
+  return {score:score,level:level,tips:tips,good:good};
+}
+
+function sync(){
+  var hasT=tunnels().length>0;
+  $("argoBox").classList.toggle("hidden", !hasT);
+  $("namedBox").classList.toggle("hidden", !hasT || argo()!=="named");
+  $("customBox").classList.toggle("hidden", $("scriptSrc").value!=="custom");
+
+  [["pReality","portBoxReality"],["pHy2","portBoxHy2"],["pTuic","portBoxTuic"],
+   ["pSocks","portBoxSocks"],["pSstcp","portBoxSstcp"],["pAnytls","portBoxAnytls"]].forEach(function(p){
+    var on=$(p[0]) && $(p[0]).checked;
+    if($(p[1])) $(p[1]).classList.toggle("show", !!on);
+  });
+
+  var t=tunnels(), d=directs(), parts=[];
+  if(t.length) parts.push("隧道 "+t.join("+")+"/"+(argo()==="named"?"固定":"临时"));
+  if(d.length) parts.push("直连 "+d.join("+"));
+  $("liveSummary").textContent = parts.length ? ("组合："+parts.join(" · ")) : "请至少勾选一种协议";
+
+  var r=computeRecommend();
+  $("recText").innerHTML = "推荐：<b>"+r.tunnel.concat(r.direct).join(", ")+"</b><br>"+r.note;
+
+  var a=assessRisk();
+  var col = a.level==="较稳"?"#34d399":(a.level==="高风险"||a.level==="偏弱"?"#fbbf24":"#93c5fd");
+  var html="搭配：<b style=\"color:"+col+"\">"+a.level+"</b>（"+a.score+"）";
+  if(a.good.length) html+=" · "+a.good.slice(0,2).join("、");
+  if(a.tips.length) html+="<br>⚠ "+a.tips.slice(0,3).join("；");
+  $("riskBox").innerHTML=html;
+
+  preview();
+}
+
+function envParts(){
+  var parts=[], xs=tunnels().concat(directs().filter(function(x){ return x!=="reality"; }));
+  if(xs.length) parts.push("SN_PROTOCOLS="+xs.join(","));
+  if(tunnels().length && argo()==="named"){
+    var tok=($("cfToken").value||"").trim().replace(/'/g,"");
+    var host=cleanHost($("fixedHost").value);
+    if(tok) parts.push("SN_TOKEN='"+tok+"'");
+    if(host) parts.push("SN_HOST="+host);
+  }
+  var uuid=($("uuid").value||"").trim();
+  var path=($("wsPath").value||"").trim();
+  if(uuid) parts.push("SN_UUID="+uuid);
+  if(path) parts.push("SN_PATH="+(path.charAt(0)==="/" ? path : "/"+path));
+  var saddr=cleanHost($("serverAddr").value); if(saddr) parts.push("SN_ADDR="+saddr);
+  var cdn=($("cdnIp").value||"").trim(); if(cdn) parts.push("SN_CDN_IP="+cdn);
+  var name=($("nodeName").value||"").trim().replace(/\s+/g,""); if(name) parts.push("SN_NAME="+name);
+  var dest=($("dest").value||"").trim(); if(dest) parts.push("SN_DEST="+dest);
+  function port(id, key, chk){
+    var v=($(id).value||"").trim();
+    if(v && $(chk) && $(chk).checked) parts.push(key+"="+v);
+  }
+  port("portReality","SN_REALITY_PORT","pReality");
+  port("portHy2","SN_HY2_PORT","pHy2");
+  port("portTuic","SN_TUIC_PORT","pTuic");
+  port("portSocks","SN_SOCKS_PORT","pSocks");
+  port("portSstcp","SN_SSTCP_PORT","pSstcp");
+  port("portAnytls","SN_ANYTLS_PORT","pAnytls");
+  parts.push("SN_PANEL_MEM="+memTier());
+  if($("pReuse").checked) parts.push("SN_REUSE=1");
+  if(act()==="install") parts.push("SN_AUTO=1");
+  return parts;
+}
+
+function scriptCmd(){
+  var src=$("scriptSrc").value;
+  if(src==="local") return "bash /root/smart-node.sh";
+  var url=URLS[src]||URLS.ghfast;
+  if(src==="custom"){
+    url=($("customUrl").value||"").trim() || URLS.ghfast;
+  }
+  return "bash <(curl -fsSL "+url+")";
+}
+
+function buildCmd(){
+  var a=act();
+  if(a!=="install"){
+    var map={link:"链接",sub:"订阅",status:"状态",check:"体检",purge:"清理 --强制"};
+    return "bash /root/smart-node.sh "+(map[a]||"链接");
+  }
+  var parts=envParts(), body=scriptCmd();
+  if(fmt()==="multi" && parts.length){
+    return parts.map(function(p){ return p+" \\"; }).join("\n")+"\n"+body;
+  }
+  return (parts.length?parts.join(" ")+" ":"")+body;
+}
+
+function preview(){
+  try{
+    var c=buildCmd();
+    $("stickyLine").textContent=c.replace(/\s+/g," ").slice(0,200)+(c.length>200?"…":"");
+  }catch(e){}
+}
+
+function build(){
+  if(act()==="install" && !tunnels().length && !directs().length){
+    toast("请至少勾选一种协议",1); return;
+  }
+  if(act()==="install" && tunnels().length && argo()==="named" && !($("cfToken").value||"").trim()){
+    toast("固定隧道请填 Token",1);
+  }
+  last=buildCmd();
+  $("outCmd").textContent=last;
+  $("stickyLine").textContent=last.replace(/\n/g," ");
+  toast("已生成");
+}
+
+function reset(){
+  clearProtos();
+  $("pVless").checked=true;
+  ["cfToken","fixedHost","uuid","nodeName","serverAddr","cdnIp","wsPath","dest","customUrl",
+   "portReality","portHy2","portTuic","portSocks","portSstcp","portAnytls"].forEach(function(id){
+    if($(id)) $(id).value="";
+  });
+  $("pReuse").checked=false;
+  var q=document.querySelector('input[name=argo][value=quick]'); if(q) q.checked=true;
+  var a=document.querySelector('input[name=act][value=install]'); if(a) a.checked=true;
+  var f=document.querySelector('input[name=fmt][value=one]'); if(f) f.checked=true;
+  var m=document.querySelector('input[name=mem][value=64]'); if(m) m.checked=true;
+  var n=document.querySelector('input[name=net][value=nat]'); if(n) n.checked=true;
+  $("scriptSrc").value="ghfast";
+  $("outCmd").textContent="已重置";
+  last="";
+  sync();
+  toast("已重置");
+}
+
+function bind(){
+  document.body.addEventListener("change", function(){ sync(); });
+  document.body.addEventListener("input", function(){ preview(); });
+  $("btnRec").onclick=function(e){ e.preventDefault(); applyRecommend(); };
+  $("btnVless").onclick=function(e){ e.preventDefault(); clearProtos(); $("pVless").checked=true; sync(); toast("仅 VLESS"); };
+  $("btnSafer").onclick=function(e){ e.preventDefault(); applySafer(); };
+  $("btnGen").onclick=function(e){ e.preventDefault(); build(); };
+  $("btnCopy").onclick=function(e){ e.preventDefault(); if(!last) build(); copyText(last); };
+  $("btnSticky").onclick=function(e){ e.preventDefault(); if(!last) build(); copyText(last); };
+  $("btnReset").onclick=function(e){ e.preventDefault(); reset(); };
+  $("btnUuid").onclick=function(e){
+    e.preventDefault();
+    $("uuid").value = (crypto.randomUUID ? crypto.randomUUID() :
+      "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,function(c){
+        var r=Math.random()*16|0; return (c==="x"?r:(r&3|8)).toString(16);
+      }));
+    toast("已生成 UUID");
+  };
+  // 端口输入自动勾选
+  [["portReality","pReality"],["portHy2","pHy2"],["portTuic","pTuic"],
+   ["portSocks","pSocks"],["portSstcp","pSstcp"],["portAnytls","pAnytls"]].forEach(function(p){
+    if(!$(p[0])) return;
+    $(p[0]).addEventListener("input", function(){
+      if(($(p[0]).value||"").trim()) $(p[1]).checked=true;
+      sync();
+    });
+  });
+  applyRecommend();
+}
+if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", bind);
+else bind();
+})();
+</script>
+</body>
+</html>
